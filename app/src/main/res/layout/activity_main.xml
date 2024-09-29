@@ -11,6 +11,14 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <Button
+            android:id="@+id/buttonOpenFile"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open File"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp" />
+
         <EditText
             android:id="@+id/editTextInput"
             android:layout_width="match_parent"
@@ -35,6 +43,14 @@
             android:layout_marginTop="16dp"
             android:textSize="16sp"
             android:justificationMode="inter_word" />
+
+        <Button
+            android:id="@+id/buttonSaveSummary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save Summary"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp" />
 
     </LinearLayout>
 </ScrollView>
