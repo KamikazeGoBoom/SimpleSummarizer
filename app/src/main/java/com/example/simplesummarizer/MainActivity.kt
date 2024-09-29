@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ScrollView
@@ -29,12 +30,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonOpenFile: Button
     private lateinit var buttonSaveSummary: Button
 
+    // Launcher for opening files
     private val openFileLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
                 val text = readFileContent(uri)
-                editTextInput.setText(text)
+                if (text.isNotEmpty()) {
+                    editTextInput.setText(text)
+                } else {
+                    Toast.makeText(this, "Failed to read the file or unsupported format.", Toast.LENGTH_SHORT).show()
+                }
             }
+        }
+    }
+
+    // Launcher for saving files
+    private val saveFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        uri?.let {
+            saveSummaryToFile(it)
         }
     }
 
@@ -78,63 +91,85 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
-            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(
+                "text/plain",
+                "application/pdf",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            ))
         }
         openFileLauncher.launch(intent)
     }
 
     private fun readFileContent(uri: Uri): String {
+        val mimeType = contentResolver.getType(uri)
+        Log.d("MainActivity", "Selected URI: $uri, MIME Type: $mimeType")
         val inputStream = contentResolver.openInputStream(uri)
-        return when {
-            uri.toString().endsWith(".txt", ignoreCase = true) -> {
-                inputStream?.bufferedReader().use { it?.readText() } ?: ""
+        if (inputStream == null) {
+            Log.e("MainActivity", "Unable to open input stream for URI: $uri")
+            Toast.makeText(this, "Unable to open file.", Toast.LENGTH_SHORT).show()
+            return ""
+        }
+
+        return when (mimeType) {
+            "text/plain" -> {
+                inputStream.bufferedReader().use { it.readText() }
             }
-            uri.toString().endsWith(".pdf", ignoreCase = true) -> {
-                val document = PDDocument.load(inputStream)
-                val stripper = PDFTextStripper()
-                val text = stripper.getText(document)
-                document.close()
-                text
+            "application/pdf" -> {
+                try {
+                    val document = PDDocument.load(inputStream)
+                    val stripper = PDFTextStripper()
+                    val text = stripper.getText(document)
+                    document.close()
+                    text
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Error reading PDF file: ${e.message}")
+                    Toast.makeText(this, "Error reading PDF file.", Toast.LENGTH_SHORT).show()
+                    ""
+                }
             }
-            uri.toString().endsWith(".docx", ignoreCase = true) -> {
-                val document = XWPFDocument(inputStream)
-                val extractor = XWPFWordExtractor(document)
-                val text = extractor.text
-                extractor.close()
-                document.close()
-                text
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> {
+                try {
+                    val document = XWPFDocument(inputStream)
+                    val extractor = XWPFWordExtractor(document)
+                    val text = extractor.text
+                    extractor.close()
+                    document.close()
+                    text
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Error reading DOCX file: ${e.message}")
+                    Toast.makeText(this, "Error reading Word document.", Toast.LENGTH_SHORT).show()
+                    ""
+                }
             }
-            else -> ""
+            else -> {
+                Toast.makeText(this, "Unsupported file type.", Toast.LENGTH_SHORT).show()
+                ""
+            }
         }
     }
 
     private fun saveSummary() {
         val summary = textViewSummary.text.toString()
         if (summary.isBlank()) {
-            Toast.makeText(this, "No summary to save", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No summary to save.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TITLE, "summary.txt")
-        }
-        startActivityForResult(intent, CREATE_FILE)
+        saveFileLauncher.launch("summary.txt")
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == CREATE_FILE && resultCode == Activity.RESULT_OK) {
-            data?.data?.let { uri ->
-                val summary = textViewSummary.text.toString()
-                contentResolver.openFileDescriptor(uri, "w")?.use { parcelFileDescriptor ->
-                    FileOutputStream(parcelFileDescriptor.fileDescriptor).use { fileOutputStream ->
-                        fileOutputStream.write(summary.toByteArray())
-                    }
+    private fun saveSummaryToFile(uri: Uri) {
+        val summary = textViewSummary.text.toString()
+        try {
+            contentResolver.openFileDescriptor(uri, "w")?.use { parcelFileDescriptor ->
+                FileOutputStream(parcelFileDescriptor.fileDescriptor).use { fileOutputStream ->
+                    fileOutputStream.write(summary.toByteArray())
                 }
-                Toast.makeText(this, "Summary saved successfully", Toast.LENGTH_SHORT).show()
             }
+            Toast.makeText(this, "Summary saved successfully.", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error saving summary: ${e.message}")
+            Toast.makeText(this, "Failed to save summary.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -150,7 +185,7 @@ class MainActivity : AppCompatActivity() {
             "there", "some", "more", "very", "much"
         )
 
-        val sentences = text.split(Regex("(?<=\\.)\\s+|(?<=!)\\s+|(?<=\\?)\\s+")).filter { it.isNotBlank() }
+        val sentences = text.split(Regex("(?<=[.!?])\\s+")).filter { it.isNotBlank() }
 
         val wordFrequencies = sentences.flatMap { it.toLowerCase().split(Regex("\\s+")) }
             .filter { it !in stopwords }
@@ -160,12 +195,12 @@ class MainActivity : AppCompatActivity() {
         val scoredSentences = sentences.mapIndexed { index, sentence ->
             val words = sentence.toLowerCase().split(Regex("\\s+"))
             val uniqueWords = words.distinct()
-            val importantWordsCount = words.filter { it !in stopwords }.size
+            val importantWordsCount = words.count { it !in stopwords }
             val sentenceLength = words.size
 
             val grammarBonus = calculateGrammarBonus(sentence)
 
-            val score = ((uniqueWords.sumBy { wordFrequencies[it] ?: 0 }) * 2) +
+            val score = ((uniqueWords.sumOf { wordFrequencies[it] ?: 0 }) * 2) +
                     importantWordsCount +
                     grammarBonus
 
@@ -204,8 +239,4 @@ class MainActivity : AppCompatActivity() {
     }
 
     private data class ScoredSentence(val index: Int, val text: String, val score: Int)
-
-    companion object {
-        private const val CREATE_FILE = 1
-    }
 }
