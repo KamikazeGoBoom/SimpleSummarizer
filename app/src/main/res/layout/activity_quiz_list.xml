@@ -33,15 +33,15 @@
         android:text="Subject-Verb Agreement" />
 
     <Button
-        android:id="@+id/btnPunctuation"
+        android:id="@+id/btnActivePassiveVoice"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Punctuation" />
+        android:text="Active-Passive Voice" />
 
     <Button
-        android:id="@+id/btnVocabulary"
+        android:id="@+id/btnPartsOfSpeech"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Vocabulary" />
+        android:text="Parts of Speech" />
 
 </LinearLayout>

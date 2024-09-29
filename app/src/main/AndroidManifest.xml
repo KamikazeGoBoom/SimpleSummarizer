@@ -40,7 +40,49 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.SimpleSummarizer"/>
+
+        <!-- Sentence Structure Quiz Activity -->
+        <activity
+            android:name=".SentenceStructureQuizActivity"
+            android:label="Sentence Structure Quiz"
+            android:exported="true"
+            android:theme="@style/Theme.SimpleSummarizer"/>
+
+        <!-- Tenses Quiz Activity -->
+        <activity
+            android:name=".TensesQuizActivity"
+            android:label="Tenses Quiz"
+            android:exported="true"
+            android:theme="@style/Theme.SimpleSummarizer"/>
+
+        <!-- Subject-Verb Agreement Quiz Activity -->
+        <activity
+            android:name=".SubjectVerbAgreementQuizActivity"
+            android:label="Subject-Verb Agreement Quiz"
+            android:exported="true"
+            android:theme="@style/Theme.SimpleSummarizer"/>
+
+        <!-- Active-Passive Voice Quiz Activity -->
+        <activity
+            android:name=".ActivePassiveVoiceQuizActivity"
+            android:label="Active-Passive Voice Quiz"
+            android:exported="true"
+            android:theme="@style/Theme.SimpleSummarizer"/>
+
+        <!-- Parts of Speech Quiz Activity -->
+        <activity
+            android:name=".PartsOfSpeechQuizActivity"
+            android:label="Parts of Speech Quiz"
+            android:exported="true"
+            android:theme="@style/Theme.SimpleSummarizer"/>
+
+        <!-- Placeholder activity for incomplete quizzes -->
+        <activity
+            android:name=".PlaceholderActivity"
+            android:label="Placeholder"
+            android:exported="true"
+            android:theme="@style/Theme.SimpleSummarizer"/>
+
     </application>
 
 </manifest>
-
