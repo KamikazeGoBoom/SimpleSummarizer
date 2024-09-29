@@ -20,6 +20,7 @@ import org.apache.poi.xwpf.extractor.XWPFWordExtractor
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.text.PDFTextStripper
+import kotlin.math.log2
 
 class MainActivity : AppCompatActivity() {
 
@@ -30,7 +31,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonOpenFile: Button
     private lateinit var buttonSaveSummary: Button
 
-    // Launcher for opening files
     private val openFileLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
@@ -44,7 +44,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Launcher for saving files
     private val saveFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         uri?.let {
             saveSummaryToFile(it)
@@ -186,28 +185,8 @@ class MainActivity : AppCompatActivity() {
         )
 
         val sentences = text.split(Regex("(?<=[.!?])\\s+")).filter { it.isNotBlank() }
-
-        val wordFrequencies = sentences.flatMap { it.toLowerCase().split(Regex("\\s+")) }
-            .filter { it !in stopwords }
-            .groupingBy { it }
-            .eachCount()
-
-        val scoredSentences = sentences.mapIndexed { index, sentence ->
-            val words = sentence.toLowerCase().split(Regex("\\s+"))
-            val uniqueWords = words.distinct()
-            val importantWordsCount = words.count { it !in stopwords }
-            val sentenceLength = words.size
-
-            val grammarBonus = calculateGrammarBonus(sentence)
-
-            val score = ((uniqueWords.sumOf { wordFrequencies[it] ?: 0 }) * 2) +
-                    importantWordsCount +
-                    grammarBonus
-
-            ScoredSentence(index, sentence.trim(), score * sentenceLength)
-        }
-
-        val sortedSentences = scoredSentences.sortedByDescending { it.score }
+        val wordFrequencies = calculateWordFrequencies(sentences, stopwords)
+        val scoredSentences = scoreSentences(sentences, wordFrequencies, stopwords)
 
         val numSentencesInSummary = when {
             sentences.size > 30 -> max(3, sentences.size / 5)
@@ -215,28 +194,77 @@ class MainActivity : AppCompatActivity() {
             else -> sentences.size
         }
 
-        val topSentences = sortedSentences.take(numSentencesInSummary)
-
+        val topSentences = scoredSentences.sortedByDescending { it.score }.take(numSentencesInSummary)
         val orderedSummary = topSentences.sortedBy { it.index }
 
         return orderedSummary.joinToString(". ") { it.text.removeSuffix(".") } + "."
     }
 
-    private fun calculateGrammarBonus(sentence: String): Int {
-        var score = 0
-        if (sentence.contains(Regex("\\b(and|or|but|because|although|since|if|when)\\b", RegexOption.IGNORE_CASE))) {
-            score += 5
-        }
+    private fun calculateWordFrequencies(sentences: List<String>, stopwords: Set<String>): Map<String, Double> {
+        val wordCounts = sentences.flatMap { it.toLowerCase().split(Regex("\\s+")) }
+            .filter { it !in stopwords }
+            .groupingBy { it }
+            .eachCount()
 
-        val commaCount = sentence.count { it == ',' }
-        if (commaCount > 0) score += 2 * commaCount
-
-        val wordCount = sentence.split(Regex("\\s+")).size
-        if (wordCount > 15) score += 5
-        if (wordCount < 5) score -= 5
-
-        return score
+        val totalWords = wordCounts.values.sum().toDouble()
+        return wordCounts.mapValues { (_, count) -> count.toDouble() / totalWords }
     }
 
-    private data class ScoredSentence(val index: Int, val text: String, val score: Int)
+    private fun scoreSentences(sentences: List<String>, wordFrequencies: Map<String, Double>, stopwords: Set<String>): List<ScoredSentence> {
+        val totalSentences = sentences.size.toDouble()
+
+        return sentences.mapIndexed { index, sentence ->
+            val words = sentence.toLowerCase().split(Regex("\\s+"))
+            val uniqueWords = words.filter { it !in stopwords }.distinct()
+
+            val tfIdfScore = calculateTfIdfScore(uniqueWords, wordFrequencies, totalSentences)
+            val positionScore = calculatePositionScore(index, sentences.size)
+            val lengthScore = calculateLengthScore(words.size)
+            val keyPhraseScore = calculateKeyPhraseScore(sentence)
+
+            val score = (tfIdfScore * 0.4) + (positionScore * 0.3) + (lengthScore * 0.2) + (keyPhraseScore * 0.1)
+
+            ScoredSentence(index, sentence.trim(), score)
+        }
+    }
+
+    private fun calculateTfIdfScore(words: List<String>, wordFrequencies: Map<String, Double>, totalSentences: Double): Double {
+        return words.sumOf { word ->
+            val tf = wordFrequencies[word] ?: 0.0
+            val idf = log2(totalSentences / (wordFrequencies[word]?.let { 1.0 } ?: 0.0))
+            tf * idf
+        }
+    }
+
+    private fun calculatePositionScore(index: Int, totalSentences: Int): Double {
+        return when {
+            index == 0 || index == totalSentences - 1 -> 1.0
+            index < totalSentences / 3 -> 0.8
+            index > (2 * totalSentences) / 3 -> 0.6
+            else -> 0.4
+        }
+    }
+
+    private fun calculateLengthScore(wordCount: Int): Double {
+        return when {
+            wordCount < 5 -> 0.1
+            wordCount < 10 -> 0.3
+            wordCount < 20 -> 0.7
+            wordCount < 30 -> 1.0
+            else -> 0.8
+        }
+    }
+
+    private fun calculateKeyPhraseScore(sentence: String): Double {
+        val keyPhrases = listOf(
+            "in conclusion", "to summarize", "in summary", "in essence", "to sum up",
+            "therefore", "thus", "consequently", "as a result", "hence",
+            "importantly", "significantly", "notably", "in particular", "especially",
+            "for example", "for instance", "such as", "specifically", "namely"
+        )
+
+        return keyPhrases.count { sentence.toLowerCase().contains(it) }.toDouble() * 0.5
+    }
+
+    private data class ScoredSentence(val index: Int, val text: String, val score: Double)
 }
