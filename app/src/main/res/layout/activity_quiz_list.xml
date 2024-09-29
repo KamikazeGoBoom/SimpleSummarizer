@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Grammar Quiz Categories"
+        android:textSize="24sp"
+        android:layout_gravity="center"
+        android:paddingBottom="24dp" />
+
+    <Button
+        android:id="@+id/btnSentenceStructure"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sentence Structure" />
+
+    <Button
+        android:id="@+id/btnTenses"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tenses" />
+
+    <Button
+        android:id="@+id/btnSubjectVerbAgreement"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Subject-Verb Agreement" />
+
+    <Button
+        android:id="@+id/btnPunctuation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Punctuation" />
+
+    <Button
+        android:id="@+id/btnVocabulary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Vocabulary" />
+
+</LinearLayout>

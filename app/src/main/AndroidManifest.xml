@@ -15,9 +15,9 @@
         android:theme="@style/Theme.SimpleSummarizer"
         tools:targetApi="31">
 
-        <!-- Main Activity Declaration -->
+        <!-- QuizListActivity is now the MAIN activity -->
         <activity
-            android:name=".MainActivity"
+            android:name=".QuizListActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.SimpleSummarizer">
@@ -33,6 +33,14 @@
             android:label="Quiz"
             android:exported="true"
             android:theme="@style/Theme.SimpleSummarizer"/>
+
+        <!-- MainActivity can still be accessed but won't be the launch activity -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.SimpleSummarizer"/>
     </application>
 
 </manifest>
+
